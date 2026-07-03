@@ -24,3 +24,7 @@ bin/
 
 # Test binaries
 testbin/
+
+# Local QE / coverage artifacts
+output/
+e2e-cover-data/
