@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/cert-manager-operator/pkg/tlsprofile"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -67,5 +68,14 @@ var _ = Describe("Cluster TLS security profile", Label("Platform:Generic", "Feat
 			err := verifyOperandTLSArgsMatchClusterProfile(name, expectedSpec)
 			Expect(err).NotTo(HaveOccurred(), "deployment %s", name)
 		}
+
+		By("verifying trust-manager webhook TLS flags when the deployment is present")
+		_, tmErr := k8sClientSet.AppsV1().Deployments(operandNamespace).Get(ctx, "trust-manager", metav1.GetOptions{})
+		if apierrors.IsNotFound(tmErr) {
+			Skip("trust-manager deployment not present; skipping trust-manager TLS profile verification")
+		}
+		Expect(tmErr).NotTo(HaveOccurred(), "failed to get trust-manager deployment")
+		err = verifyOperandTLSArgsMatchClusterProfile("trust-manager", expectedSpec)
+		Expect(err).NotTo(HaveOccurred(), "deployment trust-manager")
 	})
 })

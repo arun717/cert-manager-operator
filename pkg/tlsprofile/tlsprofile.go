@@ -49,6 +49,12 @@ var CertManagerCipherSuiteArgKeys = []string{
 	"--metrics-tls-cipher-suites",
 }
 
+// TrustManagerCipherSuiteArgKeys are trust-manager webhook flags that must not be
+// set when the effective minimum TLS version is 1.3.
+var TrustManagerCipherSuiteArgKeys = []string{
+	"--tls-cipher-suites",
+}
+
 // CertManagerWebhookTLSArgs returns cert-manager-webhook flags for the main HTTPS
 // listener and the metrics TLS listener when TLS is enabled for metrics.
 func CertManagerWebhookTLSArgs(spec *configv1.TLSProfileSpec) []string {
@@ -87,6 +93,26 @@ func CertManagerOperandMetricsTLSArgs(spec *configv1.TLSProfileSpec) []string {
 	return []string{
 		"--metrics-tls-min-version=" + minVersion,
 		"--metrics-tls-cipher-suites=" + ciphers,
+	}
+}
+
+// TrustManagerWebhookTLSArgs returns trust-manager webhook TLS flags for the
+// cluster TLS security profile. Metrics remain plain HTTP upstream and are out
+// of scope.
+func TrustManagerWebhookTLSArgs(spec *configv1.TLSProfileSpec) []string {
+	if spec == nil {
+		return []string{}
+	}
+	minVersion := string(spec.MinTLSVersion)
+	if spec.MinTLSVersion == configv1.VersionTLS13 {
+		return []string{
+			"--tls-min-version=" + minVersion,
+		}
+	}
+	ciphers := joinIANACiphers(spec.Ciphers)
+	return []string{
+		"--tls-min-version=" + minVersion,
+		"--tls-cipher-suites=" + ciphers,
 	}
 }
 

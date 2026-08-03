@@ -1824,6 +1824,8 @@ func expectedOperandTLSArgs(deploymentName string, spec *configapiv1.TLSProfileS
 		return tlsprofile.CertManagerWebhookTLSArgs(spec)
 	case certmanagerControllerDeployment, certmanagerCAinjectorDeployment:
 		return tlsprofile.CertManagerOperandMetricsTLSArgs(spec)
+	case "trust-manager":
+		return tlsprofile.TrustManagerWebhookTLSArgs(spec)
 	default:
 		return nil
 	}
@@ -1857,8 +1859,12 @@ func verifyOperandTLSArgsMatchClusterProfile(deploymentName string, spec *config
 			return false, fmt.Errorf("deployment %q has no containers", deploymentName)
 		}
 
+		cipherKeys := tlsprofile.CertManagerCipherSuiteArgKeys
+		if deploymentName == "trust-manager" {
+			cipherKeys = tlsprofile.TrustManagerCipherSuiteArgKeys
+		}
 		for _, arg := range deployment.Spec.Template.Spec.Containers[0].Args {
-			for _, key := range tlsprofile.CertManagerCipherSuiteArgKeys {
+			for _, key := range cipherKeys {
 				if strings.HasPrefix(arg, key+"=") {
 					return false, nil
 				}
