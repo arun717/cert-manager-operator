@@ -106,7 +106,7 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 		{
 			name: "strict modern injects tls13 min version without ciphers",
 			apiServer: &configv1.APIServer{
-				ObjectMeta: metav1.ObjectMeta{Name: apiServerClusterName},
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
 				Spec: configv1.APIServerSpec{
 					TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
 					TLSSecurityProfile: &configv1.TLSSecurityProfile{
@@ -121,7 +121,7 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 		{
 			name: "legacy adherence skips injection",
 			apiServer: &configv1.APIServer{
-				ObjectMeta: metav1.ObjectMeta{Name: apiServerClusterName},
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
 				Spec: configv1.APIServerSpec{
 					TLSAdherence: configv1.TLSAdherencePolicyLegacyAdheringComponentsOnly,
 					TLSSecurityProfile: &configv1.TLSSecurityProfile{
@@ -169,7 +169,7 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 func TestApplyClusterTLSProfile_intermediateCiphers(t *testing.T) {
 	t.Setenv(trustManagerImageNameEnvVarName, testImage)
 	apiServer := &configv1.APIServer{
-		ObjectMeta: metav1.ObjectMeta{Name: apiServerClusterName},
+		ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
 		Spec: configv1.APIServerSpec{
 			TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
 			TLSSecurityProfile: &configv1.TLSSecurityProfile{
@@ -209,7 +209,7 @@ func TestApplyClusterTLSProfile_intermediateCiphers(t *testing.T) {
 func fakeCtrlClientWithAPIServer(apiServer *configv1.APIServer) *fakes.FakeCtrlClient {
 	mock := &fakes.FakeCtrlClient{}
 	mock.GetCalls(func(_ context.Context, key client.ObjectKey, obj client.Object) error {
-		if key.Name != apiServerClusterName {
+		if key.Name != tlsprofile.APIServerClusterName {
 			return apierrors.NewNotFound(schema.GroupResource{Group: configv1.GroupName, Resource: "apiservers"}, key.Name)
 		}
 		if apiServer == nil {

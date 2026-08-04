@@ -4,18 +4,12 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2"
 
 	configv1 "github.com/openshift/api/config/v1"
-	libgocrypto "github.com/openshift/library-go/pkg/crypto"
 
 	"github.com/openshift/cert-manager-operator/pkg/controller/common"
 	"github.com/openshift/cert-manager-operator/pkg/tlsprofile"
 )
-
-const apiServerClusterName = "cluster"
 
 // applyClusterTLSProfile merges cluster TLS security profile flags onto the
 // trust-manager webhook container when apiserver tlsAdherence requires it.
@@ -26,27 +20,17 @@ func (r *Reconciler) applyClusterTLSProfile(deployment *appsv1.Deployment) error
 		return nil
 	}
 
-	apiServer := &configv1.APIServer{}
-	if err := r.Get(r.ctx, types.NamespacedName{Name: apiServerClusterName}, apiServer); err != nil {
-		if apierrors.IsNotFound(err) {
-			klog.V(4).Info("skipping cluster TLS profile for trust-manager: apiserver.config.openshift.io/cluster not found")
-			return nil
-		}
-		return fmt.Errorf("failed to get apiserver.config.openshift.io/cluster: %w", err)
-	}
-
-	adherence := apiServer.Spec.TLSAdherence
-	if !libgocrypto.ShouldHonorClusterTLSProfile(adherence) {
-		klog.V(4).Infof("skipping cluster TLS profile for trust-manager: apiserver tlsAdherence=%q", adherence)
-		return nil
-	}
-	if adherence != configv1.TLSAdherencePolicyStrictAllComponents {
-		klog.Warningf("apiserver.config.openshift.io/cluster has unknown tlsAdherence %q; treating as StrictAllComponents for trust-manager", adherence)
-	}
-
-	effective, err := tlsprofile.EffectiveSpec(apiServer.Spec.TLSSecurityProfile)
+	effective, err := tlsprofile.ResolveHonoredTLSProfile(
+		r.ctx,
+		tlsprofile.NewClientReaderAPIServerFetch(r.CtrlClient),
+		"trust-manager",
+		tlsprofile.FetchErrorPropagateExceptNotFound,
+	)
 	if err != nil {
 		return err
+	}
+	if effective == nil {
+		return nil
 	}
 
 	return applyTrustManagerWebhookTLSArgs(deployment, effective)

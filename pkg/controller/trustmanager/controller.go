@@ -29,6 +29,7 @@ import (
 
 	v1alpha1 "github.com/openshift/cert-manager-operator/api/operator/v1alpha1"
 	"github.com/openshift/cert-manager-operator/pkg/controller/common"
+	"github.com/openshift/cert-manager-operator/pkg/tlsprofile"
 )
 
 // RequestEnqueueLabelValue is the label value used for filtering reconcile
@@ -135,7 +136,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Reconcile when the cluster APIServer TLS profile or adherence changes.
 	clusterAPIServerPredicate := predicate.NewPredicateFuncs(func(object client.Object) bool {
-		return object.GetName() == apiServerClusterName
+		return object.GetName() == tlsprofile.APIServerClusterName
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).

@@ -54,7 +54,10 @@ func NewOperator() *cobra.Command {
 		ctx, terminate := context.WithCancel(shutdownCtx)
 		defer terminate()
 
-		terminateOnFiles, _ := cmd.Flags().GetStringArray("terminate-on-files")
+		terminateOnFiles, err := cmd.Flags().GetStringArray("terminate-on-files")
+		if err != nil {
+			klog.Fatal(err)
+		}
 		if len(terminateOnFiles) > 0 {
 			obs, err := fileobserver.NewObserver(10 * time.Second)
 			if err != nil {
@@ -109,19 +112,34 @@ func startControllerWithClusterTLS(ctx context.Context, c *controllercmd.Control
 		return err
 	}
 
-	if listen, _ := cmd.Flags().GetString("listen"); len(listen) != 0 {
+	listen, err := cmd.Flags().GetString("listen")
+	if err != nil {
+		return err
+	}
+	if len(listen) != 0 {
 		config.ServingInfo.BindAddress = listen
 	}
 
-	kubeConfigFile, _ := cmd.Flags().GetString("kubeconfig")
-	namespace, _ := cmd.Flags().GetString("namespace")
+	kubeConfigFile, err := cmd.Flags().GetString("kubeconfig")
+	if err != nil {
+		return err
+	}
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
 
 	if !c.DisableServing {
 		restConfig, err := tlsprofile.RESTConfigFromKubeConfig(kubeConfigFile)
 		if err != nil {
-			klog.V(2).Infof("unable to build rest config for cluster TLS profile lookup: %v", err)
-		} else if err := tlsprofile.ApplyClusterProfileToHTTPServingInfo(ctx, restConfig, &config.ServingInfo); err != nil {
-			return err
+			klog.Warningf("unable to build rest config for cluster TLS profile lookup; using Controllercmd default TLS settings: %v", err)
+		} else {
+			lookupCtx, cancelLookup := context.WithTimeout(ctx, 30*time.Second)
+			err := tlsprofile.ApplyClusterProfileToHTTPServingInfo(lookupCtx, restConfig, &config.ServingInfo)
+			cancelLookup()
+			if err != nil {
+				return err
+			}
 		}
 	}
 
