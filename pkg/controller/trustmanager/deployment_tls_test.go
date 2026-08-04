@@ -2,6 +2,7 @@ package trustmanager
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -119,6 +120,33 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 			wantCipherKey: false,
 		},
 		{
+			name: "unknown adherence treated as strict",
+			apiServer: &configv1.APIServer{
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
+				Spec: configv1.APIServerSpec{
+					TLSAdherence: configv1.TLSAdherencePolicy("FutureStrictMode"),
+					TLSSecurityProfile: &configv1.TLSSecurityProfile{
+						Type: configv1.TLSProfileModernType,
+					},
+				},
+			},
+			wantTLSArgs:   true,
+			wantMinVer:    "VersionTLS13",
+			wantCipherKey: false,
+		},
+		{
+			name: "empty adherence skips injection",
+			apiServer: &configv1.APIServer{
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
+				Spec: configv1.APIServerSpec{
+					TLSSecurityProfile: &configv1.TLSSecurityProfile{
+						Type: configv1.TLSProfileModernType,
+					},
+				},
+			},
+			wantTLSArgs: false,
+		},
+		{
 			name: "legacy adherence skips injection",
 			apiServer: &configv1.APIServer{
 				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
@@ -163,6 +191,74 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 				t.Fatalf("wantCipherKey=%v hasCipher=%v", tt.wantCipherKey, hasCipher)
 			}
 		})
+	}
+}
+
+func TestApplyClusterTLSProfile_forbiddenPropagates(t *testing.T) {
+	t.Setenv(trustManagerImageNameEnvVarName, testImage)
+	r := testReconciler(t)
+	mock := &fakes.FakeCtrlClient{}
+	mock.GetCalls(func(_ context.Context, key client.ObjectKey, _ client.Object) error {
+		return apierrors.NewForbidden(schema.GroupResource{Group: configv1.GroupName, Resource: "apiservers"}, key.Name, errors.New("denied"))
+	})
+	r.CtrlClient = mock
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: trustManagerDeploymentName, Namespace: operandNamespace},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: trustManagerContainerName}},
+				},
+			},
+		},
+	}
+	if err := r.applyClusterTLSProfile(dep); err == nil {
+		t.Fatal("expected Forbidden to propagate")
+	}
+}
+
+func TestApplyClusterTLSProfile_nilClientIsNoop(t *testing.T) {
+	r := testReconciler(t)
+	r.CtrlClient = nil
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: trustManagerDeploymentName, Namespace: operandNamespace},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name: trustManagerContainerName,
+						Args: []string{"--webhook-port=6443"},
+					}},
+				},
+			},
+		},
+	}
+	if err := r.applyClusterTLSProfile(dep); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(dep.Spec.Template.Spec.Containers[0].Args) != 1 {
+		t.Fatalf("expected args unchanged, got %#v", dep.Spec.Template.Spec.Containers[0].Args)
+	}
+}
+
+func TestApplyTrustManagerWebhookTLSArgs_missingContainer(t *testing.T) {
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: trustManagerDeploymentName, Namespace: operandNamespace},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "not-trust-manager"}},
+				},
+			},
+		},
+	}
+	err := applyTrustManagerWebhookTLSArgs(dep, &configv1.TLSProfileSpec{
+		MinTLSVersion: configv1.VersionTLS12,
+		Ciphers:       []string{"ECDHE-RSA-AES128-GCM-SHA256"},
+	})
+	if err == nil {
+		t.Fatal("expected error for missing container")
 	}
 }
 

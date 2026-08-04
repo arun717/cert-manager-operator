@@ -31,8 +31,9 @@ const (
 	FetchErrorPropagateExceptNotFound FetchErrorMode = iota
 )
 
-// ObjectGetter is the subset of controller-runtime client used to fetch APIServer.
-// It matches both client.Reader and this repo's CtrlClient Get signature.
+// ObjectGetter is the Get subset used to fetch APIServer. It matches
+// common.CtrlClient's Get signature (no GetOption variadic), which is what
+// production callers pass via NewClientReaderAPIServerFetch.
 type ObjectGetter interface {
 	Get(ctx context.Context, key client.ObjectKey, obj client.Object) error
 }

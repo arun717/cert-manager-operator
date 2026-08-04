@@ -1,10 +1,32 @@
 package tlsprofile
 
 import (
+	"context"
 	"testing"
+
+	"k8s.io/client-go/rest"
 
 	configv1 "github.com/openshift/api/config/v1"
 )
+
+func TestApplyClusterProfileToHTTPServingInfo_guards(t *testing.T) {
+	t.Run("nil serving", func(t *testing.T) {
+		err := ApplyClusterProfileToHTTPServingInfo(context.Background(), &rest.Config{}, nil)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+	t.Run("nil rest config", func(t *testing.T) {
+		serving := &configv1.HTTPServingInfo{}
+		err := ApplyClusterProfileToHTTPServingInfo(context.Background(), nil, serving)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if serving.MinTLSVersion != "" {
+			t.Fatalf("serving should remain unchanged on error, got min=%q", serving.MinTLSVersion)
+		}
+	})
+}
 
 func TestApplyToHTTPServingInfo(t *testing.T) {
 	t.Run("intermediate", func(t *testing.T) {
