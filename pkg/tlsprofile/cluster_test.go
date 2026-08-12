@@ -83,6 +83,16 @@ func TestResolveHonoredTLSProfile_adherence(t *testing.T) {
 			},
 		},
 		{
+			// TLSAdherencePolicyNoOpinion is ""; explicit const documents operator-start soft-skip.
+			name: "noOpinion adherence skips",
+			apiServer: &configv1.APIServer{
+				Spec: configv1.APIServerSpec{
+					TLSAdherence:       configv1.TLSAdherencePolicyNoOpinion,
+					TLSSecurityProfile: &configv1.TLSSecurityProfile{Type: configv1.TLSProfileModernType},
+				},
+			},
+		},
+		{
 			name: "strict modern returns effective spec",
 			apiServer: &configv1.APIServer{
 				Spec: configv1.APIServerSpec{
