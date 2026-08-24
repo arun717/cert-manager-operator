@@ -277,7 +277,6 @@ spec:
       annotations:
         prometheus.io/path: /metrics
         prometheus.io/port: "9402"
-        prometheus.io/scheme: https
         prometheus.io/scrape: "true"
       labels:
         app: cainjector
@@ -1449,7 +1448,6 @@ spec:
       annotations:
         prometheus.io/path: /metrics
         prometheus.io/port: "9402"
-        prometheus.io/scheme: https
         prometheus.io/scrape: "true"
       labels:
         app: cert-manager
@@ -1972,7 +1970,6 @@ spec:
       annotations:
         prometheus.io/path: /metrics
         prometheus.io/port: "9402"
-        prometheus.io/scheme: https
         prometheus.io/scrape: "true"
       labels:
         app: webhook
