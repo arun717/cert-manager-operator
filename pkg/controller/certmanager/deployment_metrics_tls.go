@@ -18,8 +18,9 @@ const (
 // listeners (port 9402) using cert-manager's dynamic metrics serving CA.
 // Cipher/min-version flags continue to come from WithClusterTLSProfileFromAPIServer.
 func withOperandMetricsTLS(_ *operatorv1.OperatorSpec, deployment *appsv1.Deployment) error {
-	if len(deployment.Spec.Template.Spec.Containers) == 0 {
-		return fmt.Errorf("deployment %s/%s has no containers", deployment.Namespace, deployment.Name)
+	if len(deployment.Spec.Template.Spec.Containers) != 1 {
+		return fmt.Errorf("deployment %s/%s: expected 1 container for metrics TLS hook, got %d",
+			deployment.Namespace, deployment.Name, len(deployment.Spec.Template.Spec.Containers))
 	}
 
 	extra, ok := operandMetricsTLSArgs(deployment.Name)

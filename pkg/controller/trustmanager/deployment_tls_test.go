@@ -22,10 +22,12 @@ import (
 
 func TestApplyTrustManagerWebhookTLSArgs(t *testing.T) {
 	tests := []struct {
-		name       string
-		spec       *configv1.TLSProfileSpec
-		wantKeys   []string
-		wantAbsent []string
+		name               string
+		spec               *configv1.TLSProfileSpec
+		wantKeys           []string
+		wantAbsent         []string
+		wantMinVer         string
+		wantCipherContains string
 	}{
 		{
 			name: "intermediate sets min version and ciphers",
@@ -33,7 +35,19 @@ func TestApplyTrustManagerWebhookTLSArgs(t *testing.T) {
 				Ciphers:       []string{"ECDHE-RSA-AES128-GCM-SHA256"},
 				MinTLSVersion: configv1.VersionTLS12,
 			},
-			wantKeys: []string{"--tls-min-version", "--tls-cipher-suites"},
+			wantKeys:           []string{"--tls-min-version", "--tls-cipher-suites"},
+			wantMinVer:         "VersionTLS12",
+			wantCipherContains: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		},
+		{
+			name: "old sets min version and ciphers",
+			spec: &configv1.TLSProfileSpec{
+				Ciphers:       []string{"ECDHE-RSA-AES128-GCM-SHA256", "AES128-SHA"},
+				MinTLSVersion: configv1.VersionTLS10,
+			},
+			wantKeys:           []string{"--tls-min-version", "--tls-cipher-suites"},
+			wantMinVer:         "VersionTLS10",
+			wantCipherContains: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 		},
 		{
 			name: "modern tls13 omits cipher suites",
@@ -43,6 +57,30 @@ func TestApplyTrustManagerWebhookTLSArgs(t *testing.T) {
 			},
 			wantKeys:   []string{"--tls-min-version"},
 			wantAbsent: []string{"--tls-cipher-suites"},
+			wantMinVer: "VersionTLS13",
+		},
+		{
+			name: "custom tls12 sets min version and mapped ciphers",
+			spec: &configv1.TLSProfileSpec{
+				Ciphers: []string{
+					"ECDHE-RSA-AES128-GCM-SHA256",
+					"TLS_AES_128_GCM_SHA256",
+				},
+				MinTLSVersion: configv1.VersionTLS12,
+			},
+			wantKeys:           []string{"--tls-min-version", "--tls-cipher-suites"},
+			wantMinVer:         "VersionTLS12",
+			wantCipherContains: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		},
+		{
+			name: "custom tls13 omits cipher suites",
+			spec: &configv1.TLSProfileSpec{
+				Ciphers:       []string{"TLS_AES_128_GCM_SHA256"},
+				MinTLSVersion: configv1.VersionTLS13,
+			},
+			wantKeys:   []string{"--tls-min-version"},
+			wantAbsent: []string{"--tls-cipher-suites"},
+			wantMinVer: "VersionTLS13",
 		},
 		{
 			name: "nil spec is no-op",
@@ -87,10 +125,11 @@ func TestApplyTrustManagerWebhookTLSArgs(t *testing.T) {
 					t.Fatalf("did not expect arg key %q, got %#v", key, argMap)
 				}
 			}
-			if tt.spec != nil && tt.spec.MinTLSVersion == configv1.VersionTLS13 {
-				if argMap["--tls-min-version"] != "VersionTLS13" {
-					t.Fatalf("got min version %q", argMap["--tls-min-version"])
-				}
+			if tt.wantMinVer != "" && argMap["--tls-min-version"] != tt.wantMinVer {
+				t.Fatalf("got min version %q want %q", argMap["--tls-min-version"], tt.wantMinVer)
+			}
+			if tt.wantCipherContains != "" && !strings.Contains(argMap["--tls-cipher-suites"], tt.wantCipherContains) {
+				t.Fatalf("expected cipher %q in %q", tt.wantCipherContains, argMap["--tls-cipher-suites"])
 			}
 		})
 	}
@@ -98,11 +137,12 @@ func TestApplyTrustManagerWebhookTLSArgs(t *testing.T) {
 
 func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 	tests := []struct {
-		name          string
-		apiServer     *configv1.APIServer
-		wantTLSArgs   bool
-		wantMinVer    string
-		wantCipherKey bool
+		name               string
+		apiServer          *configv1.APIServer
+		wantTLSArgs        bool
+		wantMinVer         string
+		wantCipherKey      bool
+		wantCipherContains string
 	}{
 		{
 			name: "strict modern injects tls13 min version without ciphers",
@@ -112,6 +152,67 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 					TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
 					TLSSecurityProfile: &configv1.TLSSecurityProfile{
 						Type: configv1.TLSProfileModernType,
+					},
+				},
+			},
+			wantTLSArgs:   true,
+			wantMinVer:    "VersionTLS13",
+			wantCipherKey: false,
+		},
+		{
+			name: "strict old injects min version and ciphers",
+			apiServer: &configv1.APIServer{
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
+				Spec: configv1.APIServerSpec{
+					TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
+					TLSSecurityProfile: &configv1.TLSSecurityProfile{
+						Type: configv1.TLSProfileOldType,
+					},
+				},
+			},
+			wantTLSArgs:   true,
+			wantMinVer:    "VersionTLS10",
+			wantCipherKey: true,
+		},
+		{
+			name: "strict custom tls12 injects mapped ciphers",
+			apiServer: &configv1.APIServer{
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
+				Spec: configv1.APIServerSpec{
+					TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
+					TLSSecurityProfile: &configv1.TLSSecurityProfile{
+						Type: configv1.TLSProfileCustomType,
+						Custom: &configv1.CustomTLSProfile{
+							TLSProfileSpec: configv1.TLSProfileSpec{
+								Ciphers: []string{
+									"ECDHE-RSA-AES128-GCM-SHA256",
+									"TLS_AES_128_GCM_SHA256",
+								},
+								MinTLSVersion: configv1.VersionTLS12,
+							},
+						},
+					},
+				},
+			},
+			wantTLSArgs:        true,
+			wantMinVer:         "VersionTLS12",
+			wantCipherKey:      true,
+			wantCipherContains: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		},
+		{
+			name: "strict custom tls13 omits cipher suites",
+			apiServer: &configv1.APIServer{
+				ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
+				Spec: configv1.APIServerSpec{
+					TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
+					TLSSecurityProfile: &configv1.TLSSecurityProfile{
+						Type: configv1.TLSProfileCustomType,
+						Custom: &configv1.CustomTLSProfile{
+							TLSProfileSpec: configv1.TLSProfileSpec{
+								Ciphers:       []string{"TLS_AES_128_GCM_SHA256"},
+								MinTLSVersion: configv1.VersionTLS13,
+							},
+						},
 					},
 				},
 			},
@@ -190,7 +291,39 @@ func TestApplyClusterTLSProfile_adherence(t *testing.T) {
 			if hasCipher != tt.wantCipherKey {
 				t.Fatalf("wantCipherKey=%v hasCipher=%v", tt.wantCipherKey, hasCipher)
 			}
+			if tt.wantCipherContains != "" && !strings.Contains(argMap["--tls-cipher-suites"], tt.wantCipherContains) {
+				t.Fatalf("expected cipher %q in %q", tt.wantCipherContains, argMap["--tls-cipher-suites"])
+			}
 		})
+	}
+}
+
+func TestApplyClusterTLSProfile_invalidCustomPropagates(t *testing.T) {
+	t.Setenv(trustManagerImageNameEnvVarName, testImage)
+	apiServer := &configv1.APIServer{
+		ObjectMeta: metav1.ObjectMeta{Name: tlsprofile.APIServerClusterName},
+		Spec: configv1.APIServerSpec{
+			TLSAdherence: configv1.TLSAdherencePolicyStrictAllComponents,
+			TLSSecurityProfile: &configv1.TLSSecurityProfile{
+				Type: configv1.TLSProfileCustomType,
+			},
+		},
+	}
+	r := testReconciler(t)
+	r.CtrlClient = fakeCtrlClientWithAPIServer(apiServer)
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: trustManagerDeploymentName, Namespace: operandNamespace},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: trustManagerContainerName}},
+				},
+			},
+		},
+	}
+	if err := r.applyClusterTLSProfile(dep); err == nil {
+		t.Fatal("expected error for custom profile missing custom settings")
 	}
 }
 

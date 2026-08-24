@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -95,4 +96,15 @@ func ResolveHonoredTLSProfile(ctx context.Context, fetch FetchAPIServerFunc, com
 	}
 
 	return EffectiveSpec(apiServer.Spec.TLSSecurityProfile)
+}
+
+// ClusterAPIServerTLSConfigChanged reports whether TLS fields that this
+// operator honors changed between old and new. Status and unrelated spec
+// updates are ignored. A nil/non-nil transition is treated as a change.
+func ClusterAPIServerTLSConfigChanged(old, new *configv1.APIServer) bool {
+	if old == nil || new == nil {
+		return old != new
+	}
+	return old.Spec.TLSAdherence != new.Spec.TLSAdherence ||
+		!equality.Semantic.DeepEqual(old.Spec.TLSSecurityProfile, new.Spec.TLSSecurityProfile)
 }

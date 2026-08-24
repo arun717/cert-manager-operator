@@ -164,3 +164,100 @@ func TestNewRESTConfigAPIServerFetch_nilConfig(t *testing.T) {
 		t.Fatal("expected error for nil rest config")
 	}
 }
+
+func TestClusterAPIServerTLSConfigChanged(t *testing.T) {
+	modern := &configv1.TLSSecurityProfile{Type: configv1.TLSProfileModernType}
+	intermediate := &configv1.TLSSecurityProfile{Type: configv1.TLSProfileIntermediateType}
+	customA := &configv1.TLSSecurityProfile{
+		Type: configv1.TLSProfileCustomType,
+		Custom: &configv1.CustomTLSProfile{
+			TLSProfileSpec: configv1.TLSProfileSpec{
+				MinTLSVersion: configv1.VersionTLS12,
+				Ciphers:       []string{"TLS_AES_128_GCM_SHA256"},
+			},
+		},
+	}
+	customB := customA.DeepCopy()
+	customB.Custom.Ciphers = []string{"TLS_AES_256_GCM_SHA384"}
+
+	base := func(adherence configv1.TLSAdherencePolicy, profile *configv1.TLSSecurityProfile) *configv1.APIServer {
+		return &configv1.APIServer{
+			Spec: configv1.APIServerSpec{
+				TLSAdherence:       adherence,
+				TLSSecurityProfile: profile,
+			},
+		}
+	}
+
+	tests := []struct {
+		name string
+		old  *configv1.APIServer
+		new  *configv1.APIServer
+		want bool
+	}{
+		{name: "both nil"},
+		{
+			name: "old nil",
+			new:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+			want: true,
+		},
+		{
+			name: "new nil",
+			old:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+			want: true,
+		},
+		{
+			name: "unchanged TLS fields",
+			old:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+			new:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+		},
+		{
+			name: "adherence changed",
+			old:  base(configv1.TLSAdherencePolicyLegacyAdheringComponentsOnly, modern),
+			new:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+			want: true,
+		},
+		{
+			name: "profile type changed",
+			old:  base(configv1.TLSAdherencePolicyStrictAllComponents, intermediate),
+			new:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+			want: true,
+		},
+		{
+			name: "custom cipher list changed",
+			old:  base(configv1.TLSAdherencePolicyStrictAllComponents, customA),
+			new:  base(configv1.TLSAdherencePolicyStrictAllComponents, customB),
+			want: true,
+		},
+		{
+			name: "status-only update",
+			old: func() *configv1.APIServer {
+				a := base(configv1.TLSAdherencePolicyStrictAllComponents, modern)
+				a.ResourceVersion = "1"
+				return a
+			}(),
+			new: func() *configv1.APIServer {
+				a := base(configv1.TLSAdherencePolicyStrictAllComponents, modern)
+				a.ResourceVersion = "2"
+				return a
+			}(),
+		},
+		{
+			name: "unrelated encryption spec change",
+			old:  base(configv1.TLSAdherencePolicyStrictAllComponents, modern),
+			new: func() *configv1.APIServer {
+				a := base(configv1.TLSAdherencePolicyStrictAllComponents, modern)
+				a.Spec.Encryption.Type = configv1.EncryptionTypeAESCBC
+				return a
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ClusterAPIServerTLSConfigChanged(tt.old, tt.new); got != tt.want {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

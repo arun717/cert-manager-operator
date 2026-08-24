@@ -35,6 +35,7 @@ func TestWithOperandMetricsTLS(t *testing.T) {
 		annotations     map[string]string
 		args            []string
 		noContainers    bool
+		extraContainer  bool
 		applyTwice      bool
 		wantErrContains string
 		wantArgs        []string
@@ -46,7 +47,14 @@ func TestWithOperandMetricsTLS(t *testing.T) {
 			name:            "error: no containers",
 			deploymentName:  certmanagerControllerDeployment,
 			noContainers:    true,
-			wantErrContains: "cert-manager/cert-manager has no containers",
+			wantErrContains: "expected 1 container for metrics TLS hook, got 0",
+		},
+		{
+			name:            "error: more than one container",
+			deploymentName:  certmanagerControllerDeployment,
+			args:            []string{"--v=2"},
+			extraContainer:  true,
+			wantErrContains: "expected 1 container for metrics TLS hook, got 2",
 		},
 		{
 			name:           "no-op: unknown deployment name",
@@ -158,6 +166,11 @@ func TestWithOperandMetricsTLS(t *testing.T) {
 					Name: tt.deploymentName,
 					Args: append([]string{}, tt.args...),
 				}}
+				if tt.extraContainer {
+					dep.Spec.Template.Spec.Containers = append(dep.Spec.Template.Spec.Containers, corev1.Container{
+						Name: "sidecar",
+					})
+				}
 			}
 
 			err := withOperandMetricsTLS(nil, dep)
