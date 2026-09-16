@@ -3445,7 +3445,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 spec:
@@ -3453,6 +3453,9 @@ spec:
   dnsNames:
     - "trust-manager.cert-manager.svc"
   secretName: trust-manager-tls
+  secretTemplate:
+    annotations:
+      cert-manager.io/allow-direct-injection: "true"
   privateKey:
     rotationPolicy: Always
   revisionHistoryLimit: 1
@@ -3484,7 +3487,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     rbac.authorization.k8s.io/aggregate-to-cluster-reader: "true"
     app.kubernetes.io/part-of: cert-manager-operator
@@ -3519,7 +3522,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
   name: trust-manager
@@ -3579,7 +3582,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
   name: trust-manager
@@ -3617,7 +3620,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 spec:
@@ -3632,7 +3635,7 @@ spec:
         app: cert-manager-trust-manager
         app.kubernetes.io/name: cert-manager-trust-manager
         app.kubernetes.io/instance: cert-manager-trust-manager
-        app.kubernetes.io/version: "v0.24.0"
+        app.kubernetes.io/version: "v0.25.0"
         app.kubernetes.io/managed-by: cert-manager-operator
         app.kubernetes.io/part-of: cert-manager-operator
     spec:
@@ -3640,7 +3643,7 @@ spec:
       automountServiceAccountToken: true
       containers:
         - name: trust-manager
-          image: "quay.io/jetstack/trust-manager:v0.24.0"
+          image: "quay.io/jetstack/trust-manager:v0.25.0"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 6443
@@ -3713,7 +3716,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 spec:
@@ -3744,7 +3747,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 rules:
@@ -3782,7 +3785,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 rules:
@@ -3822,7 +3825,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 roleRef:
@@ -3859,7 +3862,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 roleRef:
@@ -3898,7 +3901,7 @@ metadata:
     app.kubernetes.io/component: metrics
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 spec:
@@ -3937,7 +3940,7 @@ metadata:
     app: cert-manager-trust-manager
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 spec:
@@ -3975,7 +3978,7 @@ metadata:
   labels:
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
 `)
@@ -4004,11 +4007,11 @@ metadata:
     app: cert-manager-trust-manager
     app.kubernetes.io/name: cert-manager-trust-manager
     app.kubernetes.io/instance: cert-manager-trust-manager
-    app.kubernetes.io/version: "v0.24.0"
+    app.kubernetes.io/version: "v0.25.0"
     app.kubernetes.io/managed-by: cert-manager-operator
     app.kubernetes.io/part-of: cert-manager-operator
   annotations:
-    cert-manager.io/inject-ca-from: "cert-manager/trust-manager"
+    cert-manager.io/inject-ca-from-secret: "cert-manager/trust-manager-tls"
 webhooks:
   - name: trust.cert-manager.io
     rules:
